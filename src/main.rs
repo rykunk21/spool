@@ -1,124 +1,19 @@
 use crossterm::{
-    event::{self, poll, Event, KeyCode},
+    event::{self, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::style::Color;
-use ratatui::{
-    backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
-    widgets::{Block, Borders, Paragraph},
-    Terminal,
-};
-use std::io;
-use std::time::{Duration, Instant};
-use tachyonfx::{fx, Duration as FxDuration, Effect, EffectTimer, Shader};
-mod cell;
-use cell::Cell;
+use ratatui::{backend::CrosstermBackend, Terminal};
+use std::{io, path::PathBuf};
 
 mod app;
+mod cell;
+mod ui;
+mod util;
+
 use app::App;
-
-struct FxState {
-    select_effect: Option<Effect>,
-    deselect_effect: Option<Effect>,
-    last_tick: Instant,
-}
-
-impl FxState {
-    fn new() -> Self {
-        Self {
-            select_effect: None,
-            deselect_effect: None,
-            last_tick: Instant::now(),
-        }
-    }
-
-    fn trigger_selection(&mut self) {
-        self.select_effect = Some(fx::fade_from_fg(
-            Color::Yellow,
-            FxDuration::from_millis(300),
-        ));
-        self.deselect_effect = Some(fx::fade_to_fg(
-            Color::DarkGray,
-            FxDuration::from_millis(200),
-        ));
-    }
-
-    fn tick(&mut self) -> Duration {
-        let now = Instant::now();
-        let elapsed = now.duration_since(self.last_tick);
-        self.last_tick = now;
-        elapsed
-    }
-}
-
-fn ui(frame: &mut ratatui::Frame, app: &App, fx_state: &mut FxState) {
-    let constraints = vec![Constraint::Length(6); app.cells.len()];
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(constraints)
-        .split(frame.area());
-
-    let elapsed = fx_state.tick();
-
-    for (i, cell) in app.cells.iter().enumerate() {
-        let is_selected = i == app.selected;
-        let is_last = i == app.last_selected && i != app.selected;
-
-        let border_style = if is_selected {
-            ratatui::style::Style::default().fg(ratatui::style::Color::Yellow)
-        } else {
-            ratatui::style::Style::default().fg(ratatui::style::Color::DarkGray)
-        };
-
-        let title = if is_selected {
-            if app.editing {
-                format!("Cell {} [editing]", cell.id)
-            } else {
-                format!("Cell {} [selected]", cell.id)
-            }
-        } else {
-            format!("Cell {}", cell.id)
-        };
-
-        let widget = Paragraph::new(cell.source.clone()).block(
-            Block::default()
-                .title(title)
-                .borders(Borders::ALL)
-                .border_style(border_style),
-        );
-
-        frame.render_widget(widget, chunks[i]);
-
-        // apply fade-in on newly selected cell
-        if is_selected {
-            if let Some(effect) = &mut fx_state.select_effect {
-                let buf = frame.buffer_mut();
-                effect.process(elapsed.into(), buf, chunks[i]);
-            }
-        }
-
-        if is_last {
-            if let Some(effect) = &mut fx_state.deselect_effect {
-                let buf = frame.buffer_mut();
-                effect.process(elapsed.into(), buf, chunks[i]);
-            }
-        }
-    }
-
-    // clean up finished effects
-    if fx_state.select_effect.as_ref().map_or(false, |e| e.done()) {
-        fx_state.select_effect = None;
-    }
-    if fx_state
-        .deselect_effect
-        .as_ref()
-        .map_or(false, |e| e.done())
-    {
-        fx_state.deselect_effect = None;
-    }
-}
+use ui::ui;
+use util::vim::{Input, Transition, Vim};
 
 fn main() -> anyhow::Result<()> {
     enable_raw_mode()?;
@@ -127,18 +22,22 @@ fn main() -> anyhow::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::new();
-    let mut fx_state = FxState::new();
+    let mut app = App::new(PathBuf::from("test.md"))?;
+    let mut fx_state = ui::FxState::new();
 
     loop {
-        terminal.draw(|f| ui(f, &app, &mut fx_state))?;
+        // draw the ui every iteration
+        terminal.draw(|f| ui(f, &mut app, &mut fx_state))?;
 
-        // use poll so we can redraw during animations
-        if poll(Duration::from_millis(16))? {
+        // poll for an event?
+        if event::poll(std::time::Duration::from_millis(16))? {
             if let Event::Key(key) = event::read()? {
                 if !app.editing {
                     match key.code {
-                        KeyCode::Char('q') => break,
+                        KeyCode::Char('q') => {
+                            app.save_to_file()?;
+                            break;
+                        }
                         KeyCode::Char('j') | KeyCode::Down => {
                             app.move_down();
                             fx_state.trigger_selection();
@@ -153,15 +52,26 @@ fn main() -> anyhow::Result<()> {
                         }
                         KeyCode::Char('d') => app.delete_cell(),
                         KeyCode::Enter => app.toggle_focus(),
-                        KeyCode::Tab => app.run_cell(),
+                        KeyCode::Tab => app.run(),
                         _ => {}
                     }
                 } else {
-                    match key.code {
-                        KeyCode::Backspace => app.backspace(),
-                        KeyCode::Char(c) => app.append_char(c),
-                        KeyCode::Enter => app.toggle_focus(),
-                        _ => {}
+                    let input = Input::from(key);
+                    let cell = &mut app.cells[app.selected];
+                    match cell.vim.transition(input, &mut cell.textarea) {
+                        Transition::Mode(mode) if cell.vim.mode != mode => {
+                            cell.textarea.set_block(mode.block());
+                            cell.textarea.set_cursor_style(mode.cursor_style());
+                            cell.vim = Vim::new(mode);
+                        }
+                        Transition::Pending(input) => {
+                            cell.vim = Vim::new(cell.vim.mode).with_pending(input);
+                        }
+                        Transition::Quit => {
+                            app.toggle_focus();
+                            app.save_to_file()?;
+                        }
+                        Transition::Nop | Transition::Mode(_) => {}
                     }
                 }
             }
