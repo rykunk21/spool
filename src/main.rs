@@ -7,13 +7,14 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use std::{io, path::PathBuf};
 
 mod app;
-mod cell;
+mod engine;
 mod ui;
 mod util;
-
 use app::App;
 use ui::ui;
 use util::vim::{Input, Transition, Vim};
+
+use crate::util::Mode;
 
 fn main() -> anyhow::Result<()> {
     enable_raw_mode()?;
@@ -34,6 +35,7 @@ fn main() -> anyhow::Result<()> {
             if let Event::Key(key) = event::read()? {
                 if !app.editing {
                     match key.code {
+                        KeyCode::Char('o') => app.show_output = !app.show_output,
                         KeyCode::Char('q') => {
                             app.save_to_file()?;
                             break;
@@ -57,21 +59,28 @@ fn main() -> anyhow::Result<()> {
                     }
                 } else {
                     let input = Input::from(key);
-                    let cell = &mut app.cells[app.selected];
-                    match cell.vim.transition(input, &mut cell.textarea) {
-                        Transition::Mode(mode) if cell.vim.mode != mode => {
-                            cell.textarea.set_block(mode.block());
-                            cell.textarea.set_cursor_style(mode.cursor_style());
-                            cell.vim = Vim::new(mode);
+                    if input.key == tui_textarea::Key::Esc
+                        && app.cells[app.selected].vim.mode == Mode::Normal
+                    {
+                        app.toggle_focus();
+                        app.save_to_file()?;
+                    } else {
+                        let cell = &mut app.cells[app.selected];
+                        match cell.vim.transition(input, &mut cell.textarea) {
+                            Transition::Mode(mode) if cell.vim.mode != mode => {
+                                cell.textarea.set_block(mode.block());
+                                cell.textarea.set_cursor_style(mode.cursor_style());
+                                cell.vim = Vim::new(mode);
+                            }
+                            Transition::Pending(input) => {
+                                cell.vim = Vim::new(cell.vim.mode).with_pending(input);
+                            }
+                            Transition::Quit => {
+                                app.toggle_focus();
+                                app.save_to_file()?;
+                            }
+                            Transition::Nop | Transition::Mode(_) => {}
                         }
-                        Transition::Pending(input) => {
-                            cell.vim = Vim::new(cell.vim.mode).with_pending(input);
-                        }
-                        Transition::Quit => {
-                            app.toggle_focus();
-                            app.save_to_file()?;
-                        }
-                        Transition::Nop | Transition::Mode(_) => {}
                     }
                 }
             }

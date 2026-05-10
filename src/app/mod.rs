@@ -1,7 +1,12 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 mod viewport;
-use crate::app::viewport::Viewport;
-use crate::cell::Cell;
+use crate::{
+    app::viewport::Viewport,
+    engine::Engine,
+    util::{Mode, Vim},
+};
+pub mod cell;
+use cell::Cell;
 use tui_textarea::TextArea;
 
 pub struct App {
@@ -11,7 +16,9 @@ pub struct App {
     pub editing: bool,
     pub last_selected: usize,
     pub path: PathBuf,
+    pub show_output: bool,
     next_id: usize,
+    engine: Engine,
 }
 
 impl App {
@@ -24,6 +31,8 @@ impl App {
             editing: false,
             last_selected: 0,
             path,
+            show_output: false,
+            engine: Engine::new(),
         };
         app.load_from_file()?;
         Ok(app)
@@ -41,7 +50,13 @@ impl App {
                 current.clear();
             } else if line.starts_with("```") && in_block {
                 in_block = false;
-                self.cells.push(Cell::new(self.next_id));
+                let ta = TextArea::new(current.clone());
+                self.cells.push(Cell {
+                    id: self.next_id,
+                    textarea: ta,
+                    vim: Vim::new(Mode::Normal),
+                    output: None,
+                });
                 self.next_id += 1;
             } else if in_block {
                 current.push(line.to_string());
@@ -114,7 +129,19 @@ impl App {
     pub fn toggle_focus(&mut self) {
         self.editing = !self.editing;
     }
-    pub fn run(&self) {
-        todo!()
+
+    pub fn run(&mut self) {
+        if self.cells.is_empty() {
+            return;
+        }
+
+        match self.engine.run_cell(&mut self.cells[self.selected]) {
+            Ok(result) => {
+                self.cells[self.selected].output = Some(result);
+            }
+            Err(e) => {
+                self.cells[self.selected].output = Some(format!("Error: {e}"));
+            }
+        }
     }
 }

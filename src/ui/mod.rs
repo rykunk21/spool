@@ -1,7 +1,8 @@
 // external imports
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
-    widgets::{Block, Borders, Paragraph},
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Style},
+    widgets::{Block, Borders, Clear, Paragraph, Wrap},
 };
 use tachyonfx::Shader;
 
@@ -73,4 +74,46 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App, fx_state: &mut FxState) {
             }
         }
     }
+    if app.show_output {
+        let output = app.cells[app.selected]
+            .output
+            .as_deref()
+            .unwrap_or("No output");
+
+        // center a popup in the terminal
+        let area = centered_rect(60, 40, frame.area());
+
+        frame.render_widget(Clear, area);
+        frame.render_widget(
+            Paragraph::new(output)
+                .block(
+                    Block::default()
+                        .title("Output (o to close)")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(Color::Green)),
+                )
+                .wrap(Wrap { trim: false }),
+            area,
+        );
+    }
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let vertical = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(vertical[1])[1]
 }
