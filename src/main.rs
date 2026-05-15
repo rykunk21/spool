@@ -33,7 +33,12 @@ fn main() -> anyhow::Result<()> {
             if let Event::Key(key) = event::read()? {
                 if !app.editing {
                     match key.code {
-                        KeyCode::Char('o') => app.show_output = !app.show_output,
+                        KeyCode::Char('o') => {
+                            app.show_output = !app.show_output;
+                            if app.show_output {
+                                app.fx_state.trigger_output();
+                            }
+                        }
                         KeyCode::Char('q') => {
                             app.save_to_file()?;
                             break;

@@ -3,6 +3,7 @@ mod viewport;
 use crate::{
     app::viewport::Viewport,
     engine::Engine,
+    ui::ui_fx::FxState,
     util::{Mode, Vim},
 };
 pub mod cell;
@@ -18,6 +19,7 @@ pub struct App {
     pub last_selected: usize,
     pub path: PathBuf,
     pub show_output: bool,
+    pub fx_state: FxState,
     next_id: usize,
     engine: Engine,
 }
@@ -33,6 +35,7 @@ impl App {
             last_selected: 0,
             path,
             show_output: false,
+            fx_state: FxState::new(),
             engine: Engine::new(),
         };
         app.load_from_file()?;
@@ -87,6 +90,7 @@ impl App {
             if self.selected < self.viewport.offset {
                 self.viewport.scroll_up();
             }
+            self.fx_state.trigger_selection();
         }
     }
 
@@ -98,6 +102,7 @@ impl App {
             if self.selected >= self.viewport.offset + self.viewport.height {
                 self.viewport.scroll_down(self.cells.len());
             }
+            self.fx_state.trigger_selection();
         }
     }
 

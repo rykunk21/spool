@@ -11,7 +11,12 @@ plot(x,y,"Quadratic", "Line");
 
 ```rust
 let df = read_csv("text.csv");
-df.shape();
+let col_a = df.select("col_a");
+let col_b = df.select("col_b");
+plot(col_a, col_b, "A vs B", "Line");
+
+
+
 
 ```
 

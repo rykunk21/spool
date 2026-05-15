@@ -7,6 +7,7 @@ use ratatui::{
 
 use crate::app::cell::CellOutput;
 use crate::app::App;
+pub mod ui_fx;
 
 pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
     let visible = app.viewport.visible_mut(&mut app.cells);
@@ -18,8 +19,13 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
         .split(frame.area());
 
     let offset = app.viewport.offset;
+    let elapsed = app.fx_state.tick();
+
     for (i, cell) in visible.iter_mut().enumerate() {
         let is_selected = i + offset == app.selected;
+
+        let is_last = i + offset == app.last_selected && i + offset != app.selected;
+
         let border_style = if is_selected {
             ratatui::style::Style::default().fg(ratatui::style::Color::Yellow)
         } else {
@@ -55,10 +61,29 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
             });
 
         frame.render_widget(&cell.textarea, chunks[i]);
+
+        if is_selected {
+            if let Some(effect) = &mut app.fx_state.select_effect {
+                let buf = frame.buffer_mut();
+                effect.process(elapsed.into(), buf, chunks[i]);
+            }
+        }
+        if is_last {
+            if let Some(effect) = &mut app.fx_state.deselect_effect {
+                let buf = frame.buffer_mut();
+                effect.process(elapsed.into(), buf, chunks[i]);
+            }
+        }
     }
+
     if app.show_output {
         let area = centered_rect(80, 60, frame.area());
         frame.render_widget(ratatui::widgets::Clear, area);
+
+        if app.fx_state.output_pending {
+            app.fx_state.build_output_effect(area);
+            app.fx_state.output_pending = false;
+        }
 
         match &app.cells[app.selected].output {
             CellOutput::Text(text) => {
@@ -92,6 +117,12 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
                 panic!("unreachable");
             }
         }
+
+        let elapsed = app.fx_state.tick();
+        if let Some(effect) = &mut app.fx_state.output_effect {
+            let buf = frame.buffer_mut();
+            effect.process(elapsed.into(), buf, area);
+        }
     }
 }
 
@@ -108,7 +139,8 @@ fn print_text(frame: &mut ratatui::Frame, text: &String, area: Rect) {
         area,
     );
 }
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+
+pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let vertical = Layout::default()
         .direction(Direction::Vertical)
         .constraints([

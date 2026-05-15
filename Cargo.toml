@@ -12,3 +12,4 @@ ratatui-textarea = "0.9"
 rhai = "1.24.0"
 polars = { version = "0.53.0", features = ["lazy", "csv"] }
 ratatui-plt = "0.0.2"
+tachyonfx = "0.25.0"
