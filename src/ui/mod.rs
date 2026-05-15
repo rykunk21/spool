@@ -47,17 +47,12 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
                 .borders(Borders::ALL)
                 .border_style(border_style),
         );
-        cell.textarea
-            .set_cursor_line_style(if is_selected && app.editing {
-                ratatui::style::Style::default().add_modifier(ratatui::style::Modifier::UNDERLINED)
-            } else {
-                ratatui::style::Style::default()
-            });
+
         cell.textarea
             .set_cursor_style(if is_selected && app.editing {
-                ratatui::style::Style::default().add_modifier(ratatui::style::Modifier::REVERSED)
+                cell.vim.mode.cursor_style()
             } else {
-                ratatui::style::Style::default()
+                Style::default()
             });
 
         frame.render_widget(&cell.textarea, chunks[i]);
