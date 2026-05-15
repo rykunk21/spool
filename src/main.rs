@@ -35,9 +35,6 @@ fn main() -> anyhow::Result<()> {
                     match key.code {
                         KeyCode::Char('o') => {
                             app.show_output = !app.show_output;
-                            if app.show_output {
-                                app.fx_state.trigger_output();
-                            }
                         }
                         KeyCode::Char('q') => {
                             app.save_to_file()?;
@@ -54,7 +51,12 @@ fn main() -> anyhow::Result<()> {
                         }
                         KeyCode::Char('d') => app.delete_cell(),
                         KeyCode::Enter => app.toggle_focus(),
-                        KeyCode::Tab => app.run(),
+                        KeyCode::Tab => {
+                            app.run();
+                            if app.show_output {
+                                app.fx_state.trigger_output();
+                            }
+                        }
                         _ => {}
                     }
                 } else {

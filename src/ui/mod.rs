@@ -118,7 +118,6 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
             }
         }
 
-        let elapsed = app.fx_state.tick();
         if let Some(effect) = &mut app.fx_state.output_effect {
             let buf = frame.buffer_mut();
             effect.process(elapsed.into(), buf, area);
