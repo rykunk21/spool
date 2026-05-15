@@ -1,17 +1,8 @@
-use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
-use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
-};
-use ratatui::backend::CrosstermBackend;
+use ratatui::crossterm::event;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::{Block, Borders};
-use ratatui::Terminal;
-use std::env;
+use ratatui_textarea::{CursorMove, Input, Key, Scrolling, TextArea};
 use std::fmt;
-use std::fs;
-use std::io;
-use std::io::BufRead;
-pub use tui_textarea::{CursorMove, Input, Key, Scrolling, TextArea};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
@@ -392,54 +383,4 @@ impl Vim {
             },
         }
     }
-}
-
-fn main() -> io::Result<()> {
-    let stdout = io::stdout();
-    let mut stdout = stdout.lock();
-
-    enable_raw_mode()?;
-    crossterm::execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut term = Terminal::new(backend)?;
-
-    let mut textarea = if let Some(path) = env::args().nth(1) {
-        let file = fs::File::open(path)?;
-        io::BufReader::new(file)
-            .lines()
-            .collect::<io::Result<_>>()?
-    } else {
-        TextArea::default()
-    };
-
-    textarea.set_block(Mode::Normal.block());
-    textarea.set_cursor_style(Mode::Normal.cursor_style());
-    let mut vim = Vim::new(Mode::Normal);
-
-    loop {
-        term.draw(|f| f.render_widget(&textarea, f.area()))?;
-
-        vim = match vim.transition(crossterm::event::read()?.into(), &mut textarea) {
-            Transition::Mode(mode) if vim.mode != mode => {
-                textarea.set_block(mode.block());
-                textarea.set_cursor_style(mode.cursor_style());
-                Vim::new(mode)
-            }
-            Transition::Nop | Transition::Mode(_) => vim,
-            Transition::Pending(input) => vim.with_pending(input),
-            Transition::Quit => break,
-        }
-    }
-
-    disable_raw_mode()?;
-    crossterm::execute!(
-        term.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
-    term.show_cursor()?;
-
-    println!("Lines: {:?}", textarea.lines());
-
-    Ok(())
 }

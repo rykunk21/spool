@@ -1,20 +1,20 @@
 use crossterm::{
-    event::{self, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::{io, path::PathBuf};
 
+use ratatui::crossterm::event::{self, Event, KeyCode};
 mod app;
 mod engine;
 mod ui;
 mod util;
-use app::App;
-use ui::ui;
-use util::vim::{Input, Transition, Vim};
-
 use crate::util::Mode;
+use app::App;
+use ratatui_textarea::{Input, Key};
+use ui::ui;
+use util::vim::{Transition, Vim};
 
 fn main() -> anyhow::Result<()> {
     enable_raw_mode()?;
@@ -24,11 +24,9 @@ fn main() -> anyhow::Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     let mut app = App::new(PathBuf::from("test.md"))?;
-    let mut fx_state = ui::FxState::new();
-
     loop {
         // draw the ui every iteration
-        terminal.draw(|f| ui(f, &mut app, &mut fx_state))?;
+        terminal.draw(|f| ui(f, &mut app))?;
 
         // poll for an event?
         if event::poll(std::time::Duration::from_millis(16))? {
@@ -42,15 +40,12 @@ fn main() -> anyhow::Result<()> {
                         }
                         KeyCode::Char('j') | KeyCode::Down => {
                             app.move_down();
-                            fx_state.trigger_selection();
                         }
                         KeyCode::Char('k') | KeyCode::Up => {
                             app.move_up();
-                            fx_state.trigger_selection();
                         }
                         KeyCode::Char('a') => {
                             app.add_cell();
-                            fx_state.trigger_selection();
                         }
                         KeyCode::Char('d') => app.delete_cell(),
                         KeyCode::Enter => app.toggle_focus(),
@@ -59,7 +54,7 @@ fn main() -> anyhow::Result<()> {
                     }
                 } else {
                     let input = Input::from(key);
-                    if input.key == tui_textarea::Key::Esc
+                    if input.key == ratatui_textarea::Key::Esc
                         && app.cells[app.selected].vim.mode == Mode::Normal
                     {
                         app.toggle_focus();

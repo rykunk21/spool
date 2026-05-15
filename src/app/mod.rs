@@ -6,8 +6,9 @@ use crate::{
     util::{Mode, Vim},
 };
 pub mod cell;
-use cell::Cell;
-use tui_textarea::TextArea;
+use cell::{Cell, CellOutput};
+
+use ratatui_textarea::TextArea;
 
 pub struct App {
     pub cells: Vec<Cell>,
@@ -55,7 +56,7 @@ impl App {
                     id: self.next_id,
                     textarea: ta,
                     vim: Vim::new(Mode::Normal),
-                    output: None,
+                    output: CellOutput::Empty,
                 });
                 self.next_id += 1;
             } else if in_block {
@@ -137,10 +138,11 @@ impl App {
 
         match self.engine.run_cell(&mut self.cells[self.selected]) {
             Ok(result) => {
-                self.cells[self.selected].output = Some(result);
+                // result is cell out
+                self.cells[self.selected].output = result
             }
             Err(e) => {
-                self.cells[self.selected].output = Some(format!("Error: {e}"));
+                self.cells[self.selected].output = CellOutput::Error(format!("Error: {e}"));
             }
         }
     }

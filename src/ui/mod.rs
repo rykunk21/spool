@@ -2,17 +2,15 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    widgets::{Block, Borders, Clear, Paragraph, Wrap},
+    widgets::{Block, Borders, Paragraph, Wrap},
 };
-use tachyonfx::Shader;
+use ratatui_plt::prelude::{Axis, LinePlot, ScatterPlot, Series};
 
 // user imports
+use crate::app::cell::{CellOutput, PlotKind};
 use crate::app::App;
-mod ui_fx;
-pub use ui_fx::FxState;
 
-pub fn ui(frame: &mut ratatui::Frame, app: &mut App, fx_state: &mut FxState) {
-    let elapsed = fx_state.tick();
+pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
     let visible = app.viewport.visible_mut(&mut app.cells);
     let constraints = vec![Constraint::Length(6); visible.len()];
 
@@ -24,7 +22,6 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App, fx_state: &mut FxState) {
     let offset = app.viewport.offset;
     for (i, cell) in visible.iter_mut().enumerate() {
         let is_selected = i + offset == app.selected;
-        let is_last = i == app.last_selected && i != app.selected;
         let border_style = if is_selected {
             ratatui::style::Style::default().fg(ratatui::style::Color::Yellow)
         } else {
@@ -60,44 +57,81 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App, fx_state: &mut FxState) {
             });
 
         frame.render_widget(cell.textarea.widget(), chunks[i]);
-
-        if is_selected {
-            if let Some(effect) = &mut fx_state.select_effect {
-                let buf = frame.buffer_mut();
-                effect.process(elapsed.into(), buf, chunks[i]);
-            }
-        }
-        if is_last {
-            if let Some(effect) = &mut fx_state.deselect_effect {
-                let buf = frame.buffer_mut();
-                effect.process(elapsed.into(), buf, chunks[i]);
-            }
-        }
     }
     if app.show_output {
-        let output = app.cells[app.selected]
-            .output
-            .as_deref()
-            .unwrap_or("No output");
+        let area = centered_rect(80, 60, frame.area());
+        frame.render_widget(ratatui::widgets::Clear, area);
 
-        // center a popup in the terminal
-        let area = centered_rect(60, 40, frame.area());
+        match &app.cells[app.selected].output {
+            CellOutput::Text(text) => {
+                print_text(frame, text, area);
+            }
+            CellOutput::Error(e) => {
+                print_text(frame, e, area);
+            }
+            CellOutput::Empty => {
+                frame.render_widget(
+                    Paragraph::new("No output").block(
+                        Block::default()
+                            .title("Output (o to close)")
+                            .borders(Borders::ALL)
+                            .border_style(Style::default().fg(Color::Green)),
+                    ),
+                    area,
+                );
+            }
 
-        frame.render_widget(Clear, area);
-        frame.render_widget(
-            Paragraph::new(output)
-                .block(
-                    Block::default()
-                        .title("Output (o to close)")
-                        .borders(Borders::ALL)
-                        .border_style(Style::default().fg(Color::Green)),
-                )
-                .wrap(Wrap { trim: false }),
-            area,
-        );
+            CellOutput::Plot(spec) => {
+                let block = Block::default()
+                    .title("Output (o to close)")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::Green));
+                let inner = block.inner(area);
+                frame.render_widget(block, area);
+                let series = Series::new(&spec.title)
+                    .data(spec.data.clone())
+                    .color(ratatui_plt::prelude::Color::Cyan);
+
+                match spec.kind {
+                    PlotKind::Line => {
+                        let plot = LinePlot::new()
+                            .series(series)
+                            .title(&spec.title)
+                            .x_axis(Axis::new().label(&spec.x_label))
+                            .y_axis(Axis::new().label(&spec.y_label));
+                        frame.render_widget(&plot, inner);
+                    }
+                    PlotKind::Scatter => {
+                        let plot = ScatterPlot::new()
+                            .series(series)
+                            .title(&spec.title)
+                            .x_axis(Axis::new().label(&spec.x_label))
+                            .y_axis(Axis::new().label(&spec.y_label));
+                        frame.render_widget(&plot, inner);
+                    }
+                    _ => {}
+                }
+            }
+            _ => {
+                panic!("unreachable");
+            }
+        }
     }
 }
 
+fn print_text(frame: &mut ratatui::Frame, text: &String, area: Rect) {
+    frame.render_widget(
+        Paragraph::new(text.to_owned())
+            .block(
+                Block::default()
+                    .title("Output (o to close)")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::Green)),
+            )
+            .wrap(Wrap { trim: false }),
+        area,
+    );
+}
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let vertical = Layout::default()
         .direction(Direction::Vertical)

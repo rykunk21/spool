@@ -1,0 +1,296 @@
+   Compiling spool v0.1.0 (/home/admin/repos/spool)
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `io`
+   --> src/util/vim.rs:388:14
+    |
+388 | fn main() -> io::Result<()> {
+    |              ^^ use of unresolved module or unlinked crate `io`
+    |
+    = help: if you wanted to use a crate named `io`, use `cargo add io` to add it to your `Cargo.toml`
+help: a builtin type with a similar name exists
+    |
+388 - fn main() -> io::Result<()> {
+388 + fn main() -> i8::Result<()> {
+    |
+help: consider importing one of these modules
+    |
+  1 + use crate::io;
+    |
+  1 + use std::io;
+    |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `io`
+   --> src/util/vim.rs:389:18
+    |
+389 |     let stdout = io::stdout();
+    |                  ^^ use of unresolved module or unlinked crate `io`
+    |
+    = help: if you wanted to use a crate named `io`, use `cargo add io` to add it to your `Cargo.toml`
+help: a builtin type with a similar name exists
+    |
+389 -     let stdout = io::stdout();
+389 +     let stdout = i8::stdout();
+    |
+help: consider importing one of these modules
+    |
+  1 + use crate::io;
+    |
+  1 + use std::io;
+    |
+
+error[E0425]: cannot find function `enable_raw_mode` in this scope
+   --> src/util/vim.rs:392:5
+    |
+392 |     enable_raw_mode()?;
+    |     ^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing one of these functions
+    |
+  1 + use crate::enable_raw_mode;
+    |
+  1 + use crossterm::terminal::enable_raw_mode;
+    |
+
+error[E0425]: cannot find value `EnterAlternateScreen` in this scope
+   --> src/util/vim.rs:393:33
+    |
+393 |     crossterm::execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    |                                 ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing one of these unit structs
+    |
+  1 + use crate::EnterAlternateScreen;
+    |
+  1 + use crossterm::terminal::EnterAlternateScreen;
+    |
+
+error[E0425]: cannot find value `EnableMouseCapture` in this scope
+   --> src/util/vim.rs:393:55
+    |
+393 |     crossterm::execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    |                                                       ^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing one of these unit structs
+    |
+  1 + use crate::event::EnableMouseCapture;
+    |
+  1 + use crossterm::event::EnableMouseCapture;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `CrosstermBackend`
+   --> src/util/vim.rs:394:19
+    |
+394 |     let backend = CrosstermBackend::new(stdout);
+    |                   ^^^^^^^^^^^^^^^^ use of undeclared type `CrosstermBackend`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::CrosstermBackend;
+    |
+  1 + use ratatui::prelude::CrosstermBackend;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `Terminal`
+   --> src/util/vim.rs:395:20
+    |
+395 |     let mut term = Terminal::new(backend)?;
+    |                    ^^^^^^^^ use of undeclared type `Terminal`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::Terminal;
+    |
+  1 + use ratatui::Terminal;
+    |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `env`
+   --> src/util/vim.rs:397:44
+    |
+397 |     let mut textarea = if let Some(path) = env::args().nth(1) {
+    |                                            ^^^ use of unresolved module or unlinked crate `env`
+    |
+    = help: if you wanted to use a crate named `env`, use `cargo add env` to add it to your `Cargo.toml`
+help: consider importing this module
+    |
+  1 + use std::env;
+    |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `fs`
+   --> src/util/vim.rs:398:20
+    |
+398 |         let file = fs::File::open(path)?;
+    |                    ^^ use of unresolved module or unlinked crate `fs`
+    |
+    = help: if you wanted to use a crate named `fs`, use `cargo add fs` to add it to your `Cargo.toml`
+help: consider importing this struct
+    |
+  1 + use std::fs::File;
+    |
+help: if you import `File`, refer to it directly
+    |
+398 -         let file = fs::File::open(path)?;
+398 +         let file = File::open(path)?;
+    |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `io`
+   --> src/util/vim.rs:399:9
+    |
+399 |         io::BufReader::new(file)
+    |         ^^ use of unresolved module or unlinked crate `io`
+    |
+    = help: if you wanted to use a crate named `io`, use `cargo add io` to add it to your `Cargo.toml`
+help: consider importing one of these structs
+    |
+  1 + use crate::io::BufReader;
+    |
+  1 + use std::io::BufReader;
+    |
+help: if you import `BufReader`, refer to it directly
+    |
+399 -         io::BufReader::new(file)
+399 +         BufReader::new(file)
+    |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `io`
+   --> src/util/vim.rs:401:24
+    |
+401 |             .collect::<io::Result<_>>()?
+    |                        ^^ use of unresolved module or unlinked crate `io`
+    |
+    = help: if you wanted to use a crate named `io`, use `cargo add io` to add it to your `Cargo.toml`
+help: a builtin type with a similar name exists
+    |
+401 -             .collect::<io::Result<_>>()?
+401 +             .collect::<i8::Result<_>>()?
+    |
+help: consider importing one of these modules
+    |
+  1 + use crate::io;
+    |
+  1 + use std::io;
+    |
+
+error[E0425]: cannot find function `disable_raw_mode` in this scope
+   --> src/util/vim.rs:425:5
+    |
+425 |     disable_raw_mode()?;
+    |     ^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing one of these functions
+    |
+  1 + use crate::disable_raw_mode;
+    |
+  1 + use crossterm::terminal::disable_raw_mode;
+    |
+
+error[E0425]: cannot find value `LeaveAlternateScreen` in this scope
+   --> src/util/vim.rs:428:9
+    |
+428 |         LeaveAlternateScreen,
+    |         ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing one of these unit structs
+    |
+  1 + use crate::LeaveAlternateScreen;
+    |
+  1 + use crossterm::terminal::LeaveAlternateScreen;
+    |
+
+error[E0425]: cannot find value `DisableMouseCapture` in this scope
+   --> src/util/vim.rs:429:9
+    |
+429 |         DisableMouseCapture
+    |         ^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing one of these unit structs
+    |
+  1 + use crate::event::DisableMouseCapture;
+    |
+  1 + use crossterm::event::DisableMouseCapture;
+    |
+
+warning: unused import: `ratatui_plt::prelude::*`
+ --> src/engine/plot.rs:5:5
+  |
+5 | use ratatui_plt::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `Dynamic` and `EvalAltResult`
+ --> src/engine/plot.rs:6:19
+  |
+6 | use rhai::{Array, Dynamic, Engine as RhaiEngine, EvalAltResult};
+  |                   ^^^^^^^                        ^^^^^^^^^^^^^
+
+warning: unused import: `ratatui::crossterm::event`
+ --> src/util/vim.rs:1:5
+  |
+1 | use ratatui::crossterm::event;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Key`
+  --> src/main.rs:15:31
+   |
+15 | use ratatui_textarea::{Input, Key};
+   |                               ^^^
+
+warning: use of deprecated method `ratatui_textarea::TextArea::<'a>::widget`: calling this method is no longer necessary on rendering a textarea. pass &TextArea reference to `Frame::render_widget` method call directly
+  --> src/ui/mod.rs:59:43
+   |
+59 |         frame.render_widget(cell.textarea.widget(), chunks[i]);
+   |                                           ^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+error[E0282]: type annotations needed
+   --> src/util/vim.rs:411:20
+    |
+411 |         term.draw(|f| f.render_widget(&textarea, f.area()))?;
+    |                    ^  - type must be known at this point
+    |
+help: consider giving this closure parameter an explicit type
+    |
+411 |         term.draw(|f: /* Type */| f.render_widget(&textarea, f.area()))?;
+    |                     ++++++++++++
+
+error[E0277]: the trait bound `Input: From<crossterm::event::Event>` is not satisfied
+   --> src/util/vim.rs:413:62
+    |
+413 |         vim = match vim.transition(crossterm::event::read()?.into(), &mut textarea) {
+    |                                                              ^^^^ the trait `From<crossterm::event::Event>` is not implemented for `Input`
+    |
+    = help: the following other types implement trait `From<T>`:
+              `Input` implements `From<ratatui::crossterm::event::Event>`
+              `Input` implements `From<ratatui::crossterm::event::KeyEvent>`
+              `Input` implements `From<ratatui::crossterm::event::MouseEvent>`
+    = note: required for `crossterm::event::Event` to implement `Into<Input>`
+
+warning: unreachable pattern
+  --> src/ui/mod.rs:99:13
+   |
+99 |             _ => {
+   |             ^ no value can reach this
+   |
+note: multiple earlier patterns match some of the same values
+  --> src/ui/mod.rs:99:13
+   |
+66 |             CellOutput::Text(text) => {
+   |             ---------------------- matches some of the same values
+...
+69 |             CellOutput::Error(e) => {
+   |             -------------------- matches some of the same values
+...
+72 |             CellOutput::Empty => {}
+   |             ----------------- matches some of the same values
+73 |
+74 |             CellOutput::Plot(spec) => {
+   |             ---------------------- matches some of the same values
+...
+99 |             _ => {
+   |             ^ collectively making this unreachable
+   = note: `#[warn(unreachable_patterns)]` (part of `#[warn(unused)]`) on by default
+
+Some errors have detailed explanations: E0277, E0282, E0425, E0433.
+For more information about an error, try `rustc --explain E0277`.
+warning: `spool` (bin "spool") generated 6 warnings
+error: could not compile `spool` (bin "spool") due to 16 previous errors; 6 warnings emitted
