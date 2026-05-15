@@ -1,28 +1,25 @@
 // src/engine.rs
 use crate::app::cell::Cell;
 use crate::app::cell::CellOutput;
-use crate::app::cell::PlotSpec;
 use rhai::{Dynamic, Engine as RhaiEngine, EvalAltResult};
 use std::sync::{Arc, Mutex};
-mod plot;
+pub mod plot;
 mod polars;
+use plot::PlotSpec;
 
 pub struct Engine {
     pub rengine: RhaiEngine,
-    pub plot_out: Arc<Mutex<Option<PlotSpec>>>,
 }
 
 impl Engine {
     pub fn new() -> Self {
-        let plot_out: Arc<Mutex<Option<PlotSpec>>> = Arc::new(Mutex::new(None));
         let mut rengine = RhaiEngine::new();
         polars::register_polars(&mut rengine);
-        plot::register_plot(&mut rengine, plot_out.clone());
+        plot::register_plot(&mut rengine);
         register_os(&mut rengine);
-        Engine { rengine, plot_out }
+        Engine { rengine }
     }
 
-    /// Should this be modified to return a cell output? Only consumed by app_run.
     pub fn run_cell(&mut self, cell: &mut Cell) -> Result<CellOutput, Box<rhai::EvalAltResult>> {
         let script = cell.textarea.lines().join("\n");
         let output: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
@@ -33,14 +30,14 @@ impl Engine {
             s.push_str(text);
             s.push('\n');
         });
+
         let mut scope = rhai::Scope::new();
         let result = self
             .rengine
             .eval_with_scope::<Dynamic>(&mut scope, &script)?;
 
-        // check plot buffer first
-        let plot = self.plot_out.lock().unwrap().take();
-        if let Some(spec) = plot {
+        // Check if result is a PlotSpec
+        if let Some(spec) = result.clone().try_cast::<PlotSpec>() {
             return Ok(CellOutput::Plot(spec));
         }
 

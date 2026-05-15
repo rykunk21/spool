@@ -12,7 +12,7 @@ mod ui;
 mod util;
 use crate::util::Mode;
 use app::App;
-use ratatui_textarea::{Input, Key};
+use ratatui_textarea::Input;
 use ui::ui;
 use util::vim::{Transition, Vim};
 

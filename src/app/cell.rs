@@ -1,3 +1,4 @@
+use crate::engine::plot::PlotSpec;
 use crate::util::vim::{Mode, Vim};
 use ratatui_textarea::TextArea;
 
@@ -6,21 +7,6 @@ pub enum CellOutput {
     Plot(PlotSpec),
     Error(String),
     Empty,
-}
-// We can keep this for now. in the future we might want to refactor to
-// https://github.com/resonant-jovian/ratatui-plt
-pub struct PlotSpec {
-    pub title: String,
-    pub data: Vec<(f64, f64)>,
-    pub x_label: String,
-    pub y_label: String,
-    pub kind: PlotKind,
-}
-
-pub enum PlotKind {
-    Line,
-    Scatter,
-    Bar,
 }
 
 pub struct Cell {

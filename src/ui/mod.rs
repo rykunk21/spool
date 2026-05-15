@@ -4,10 +4,8 @@ use ratatui::{
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
-use ratatui_plt::prelude::{Axis, LinePlot, ScatterPlot, Series};
 
-// user imports
-use crate::app::cell::{CellOutput, PlotKind};
+use crate::app::cell::CellOutput;
 use crate::app::App;
 
 pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
@@ -56,7 +54,7 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
                 ratatui::style::Style::default()
             });
 
-        frame.render_widget(cell.textarea.widget(), chunks[i]);
+        frame.render_widget(&cell.textarea, chunks[i]);
     }
     if app.show_output {
         let area = centered_rect(80, 60, frame.area());
@@ -88,29 +86,7 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
                     .border_style(Style::default().fg(Color::Green));
                 let inner = block.inner(area);
                 frame.render_widget(block, area);
-                let series = Series::new(&spec.title)
-                    .data(spec.data.clone())
-                    .color(ratatui_plt::prelude::Color::Cyan);
-
-                match spec.kind {
-                    PlotKind::Line => {
-                        let plot = LinePlot::new()
-                            .series(series)
-                            .title(&spec.title)
-                            .x_axis(Axis::new().label(&spec.x_label))
-                            .y_axis(Axis::new().label(&spec.y_label));
-                        frame.render_widget(&plot, inner);
-                    }
-                    PlotKind::Scatter => {
-                        let plot = ScatterPlot::new()
-                            .series(series)
-                            .title(&spec.title)
-                            .x_axis(Axis::new().label(&spec.x_label))
-                            .y_axis(Axis::new().label(&spec.y_label));
-                        frame.render_widget(&plot, inner);
-                    }
-                    _ => {}
-                }
+                frame.render_widget(spec, inner)
             }
             _ => {
                 panic!("unreachable");

@@ -1,22 +1,68 @@
-use std::sync::Mutex;
+use ratatui::{layout::Rect, widgets::Widget};
+use ratatui_plt::prelude::*;
+use rhai::{Array, Dynamic, Engine as RhaiEngine};
 
-use crate::app::cell::{PlotKind, PlotSpec};
-use polars::prelude::*;
-use rhai::{Array, Engine as RhaiEngine};
+#[derive(Clone)]
+pub struct PlotSpec {
+    pub title: String,
+    pub data: Vec<(f64, f64)>,
+    pub x_label: String,
+    pub y_label: String,
+    pub kind: PlotKind,
+}
 
-pub fn register_plot(engine: &mut RhaiEngine, plot_out: Arc<Mutex<Option<PlotSpec>>>) {
-    engine.register_fn("plot", move |x: Array, y: Array, title: String| {
+#[derive(Clone)]
+pub enum PlotKind {
+    Line,
+    Scatter,
+}
+
+impl Widget for &PlotSpec {
+    fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
+        let series = Series::new(&self.title)
+            .data(self.data.clone())
+            .color(Color::Cyan);
+
+        match self.kind {
+            PlotKind::Line => {
+                LinePlot::new()
+                    .series(series)
+                    .title(&self.title)
+                    .x_axis(Axis::new().label(&self.x_label))
+                    .y_axis(Axis::new().label(&self.y_label))
+                    .render(area, buf);
+            }
+            PlotKind::Scatter => {
+                ScatterPlot::new()
+                    .series(series)
+                    .title(&self.title)
+                    .x_axis(Axis::new().label(&self.x_label))
+                    .y_axis(Axis::new().label(&self.y_label))
+                    .render(area, buf);
+            }
+        }
+    }
+}
+
+pub fn register_plot(engine: &mut RhaiEngine) {
+    engine.register_fn("plot", |x: Array, y: Array, title: String, kind: String| {
         let data: Vec<(f64, f64)> = x
             .iter()
             .zip(y.iter())
             .filter_map(|(a, b)| Some((a.as_float().ok()?, b.as_float().ok()?)))
             .collect();
-        *plot_out.lock().unwrap() = Some(PlotSpec {
+
+        let plot_kind = match kind.as_str() {
+            "scatter" => PlotKind::Scatter,
+            _ => PlotKind::Line,
+        };
+
+        Dynamic::from(PlotSpec {
             title,
             data,
             x_label: String::from("x"),
             y_label: String::from("y"),
-            kind: PlotKind::Line,
-        });
+            kind: plot_kind,
+        })
     });
 }
