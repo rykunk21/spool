@@ -1,10 +1,18 @@
 ```rust
-let df = read_csv("text.csv");
+let df = read_csv("csv1.csv");
+
+    
+
+```
+
+```rust
+print("hello");
 ```
 
 ```rust
 df.select("col_b");
 let a = df.select("col_a");
+print(a);
 ```
 
 ```rust

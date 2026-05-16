@@ -10,6 +10,8 @@ pub mod cell;
 use cell::{Cell, CellOutput};
 
 use ratatui_textarea::TextArea;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 pub struct App {
     pub cells: Vec<Cell>,
@@ -138,19 +140,60 @@ impl App {
     pub fn toggle_focus(&mut self) {
         self.editing = !self.editing;
     }
-
+    // on App
+    pub fn run_from(&mut self, start: usize) -> Result<(), Box<rhai::EvalAltResult>> {
+        // reset the scope when doing a rerun.
+        self.engine.scope = rhai::Scope::new();
+        let keys = self.compute_keys();
+        for i in start..self.cells.len() {
+            let key = keys[i].clone();
+            if !self.engine.output_map.contains_key(&key) {
+                let script = self.cells[i].textarea.lines().join("\n");
+                match self.engine.run_script(&script) {
+                    Ok((result, printed)) => {
+                        self.engine.output_map.insert(key, result.clone());
+                        self.cells[i].output = self.engine.format_output(result, printed);
+                    }
+                    Err(e) => {
+                        self.cells[i].output = CellOutput::Error(e.to_string());
+                        return Err(e);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
     pub fn run(&mut self) {
-        if self.cells.is_empty() {
-            return;
-        }
+        // find the first dirty cell
+        let keys = self.compute_keys();
+        let start = keys
+            .iter()
+            .enumerate()
+            .find(|(i, key)| !self.engine.output_map.contains_key(*key))
+            .map(|(i, _)| i)
+            .unwrap_or(self.selected);
 
-        match self.engine.run_cell(&mut self.cells[self.selected]) {
-            Ok(result) => {
-                self.cells[self.selected].output = result;
-            }
-            Err(e) => {
-                self.cells[self.selected].output = CellOutput::Error(format!("Error: {e}"));
-            }
+        if let Err(e) = self.run_from(start) {
+            self.cells[self.selected].output = CellOutput::Error(e.to_string());
         }
+    }
+
+    pub fn compute_keys(&self) -> Vec<String> {
+        let mut keys = Vec::new();
+        let mut upstream = String::from("root");
+        for cell in &self.cells {
+            let script = cell.textarea.lines().join("\n");
+            let key = App::cell_key(cell.id, &script, &upstream);
+            upstream = key.clone();
+            keys.push(key);
+        }
+        keys
+    }
+    fn cell_key(cell_id: usize, script: &str, upstream_key: &str) -> String {
+        let mut hasher = DefaultHasher::new();
+        cell_id.hash(&mut hasher);
+        script.hash(&mut hasher);
+        upstream_key.hash(&mut hasher);
+        hasher.finish().to_string()
     }
 }

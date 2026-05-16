@@ -7,11 +7,10 @@ use std::sync::{Arc, Mutex};
 pub mod plot;
 mod polars;
 use plot::PlotSpec;
-
 pub struct Engine {
     pub rengine: RhaiEngine,
     pub scope: rhai::Scope<'static>,
-    output_map: HashMap<String, Dynamic>,
+    pub output_map: HashMap<String, Dynamic>,
 }
 
 impl Engine {
@@ -26,55 +25,38 @@ impl Engine {
             output_map: HashMap::new(),
         }
     }
-
-    pub fn run_cell(&mut self, cell: &mut Cell) -> Result<CellOutput, Box<rhai::EvalAltResult>> {
-        let script = cell.textarea.lines().join("\n");
-
-        // initialize the output for printing
+    pub fn run_script(
+        &mut self,
+        script: &str,
+    ) -> Result<(Dynamic, String), Box<rhai::EvalAltResult>> {
         let output: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
-
-        // try to get against the cahce
-        let result = match self.output_map.get(&cell.id.to_string()) {
-            Some(result) => result,
-            None => {
-                let out = output.clone();
-                self.rengine.on_print(move |text| {
-                    let mut s = out.lock().unwrap();
-                    s.push_str(text);
-                    s.push('\n');
-                });
-
-                let result = self
-                    .rengine
-                    .eval_with_scope::<Dynamic>(&mut self.scope, &script)?;
-                // cache the result
-                self.output_map.insert(cell.id.to_string(), result.clone());
-                // debugging
-                self.log(&result);
-                self.output_map.get(&cell.id.to_string()).unwrap()
-            }
-        };
-
-        // Format the result as the cell output for app
-        if let Some(spec) = result.clone().try_cast::<PlotSpec>() {
-            return Ok(CellOutput::Plot(spec));
-        }
+        let out = output.clone();
+        self.rengine.on_print(move |text| {
+            let mut s = out.lock().unwrap();
+            s.push_str(text);
+            s.push('\n');
+        });
+        let result = self
+            .rengine
+            .eval_with_scope::<Dynamic>(&mut self.scope, script)?;
         let printed = output.lock().unwrap().trim_end().to_string();
+        Ok((result, printed))
+    } // converts Dynamic to CellOutput
+
+    pub fn format_output(&self, result: Dynamic, printed: String) -> CellOutput {
+        if let Some(spec) = result.clone().try_cast::<PlotSpec>() {
+            return CellOutput::Plot(spec);
+        }
         if !printed.is_empty() {
-            Ok(CellOutput::Text(printed))
+            CellOutput::Text(printed)
         } else if result.is_unit() {
-            Ok(CellOutput::Empty)
+            CellOutput::Empty
         } else {
-            Ok(CellOutput::Text(result.to_string()))
+            CellOutput::Text(result.to_string())
         }
     }
-
-    /*
-     * Helpers for cell running
-     */
-    /// Resolve the
-
-    /// log the
+    // Hash the cell with the script
+    // logging
     fn log(&self, result: &Dynamic) {
         use std::fs::OpenOptions;
         use std::io::Write;
