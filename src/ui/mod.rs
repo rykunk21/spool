@@ -24,8 +24,6 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
     for (i, cell) in visible.iter_mut().enumerate() {
         let is_selected = i + offset == app.selected;
 
-        let is_last = i + offset == app.last_selected && i + offset != app.selected;
-
         let border_style = if is_selected {
             ratatui::style::Style::default().fg(ratatui::style::Color::Yellow)
         } else {
@@ -59,12 +57,6 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
 
         if is_selected {
             if let Some(effect) = &mut app.fx_state.select_effect {
-                let buf = frame.buffer_mut();
-                effect.process(elapsed.into(), buf, chunks[i]);
-            }
-        }
-        if is_last {
-            if let Some(effect) = &mut app.fx_state.deselect_effect {
                 let buf = frame.buffer_mut();
                 effect.process(elapsed.into(), buf, chunks[i]);
             }

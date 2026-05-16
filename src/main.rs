@@ -1,29 +1,40 @@
-use crossterm::{
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+// external imports
+use ratatui::{
+    backend::CrosstermBackend,
+    crossterm::{
+        event::{self, Event, KeyCode},
+        execute,
+        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    },
+    Terminal,
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui_textarea::Input;
 use std::{io, path::PathBuf};
 
-use ratatui::crossterm::event::{self, Event, KeyCode};
+// crate modules
 mod app;
 mod engine;
 mod ui;
 mod util;
-use crate::util::Mode;
+// crate ns resolution
+use crate::util::vim::Mode;
 use app::App;
-use ratatui_textarea::Input;
 use ui::ui;
 use util::vim::{Transition, Vim};
 
 fn main() -> anyhow::Result<()> {
+    let path = std::env::args()
+        .nth(1)
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("notebook.md"));
+
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::new(PathBuf::from("test.md"))?;
+    let mut app = App::new(path)?;
     loop {
         // draw the ui every iteration
         terminal.draw(|f| ui(f, &mut app))?;
@@ -50,12 +61,14 @@ fn main() -> anyhow::Result<()> {
                             app.add_cell();
                         }
                         KeyCode::Char('d') => app.delete_cell(),
-                        KeyCode::Enter => app.toggle_focus(),
+                        KeyCode::Enter => {
+                            app.toggle_focus();
+                            app.show_output = false;
+                        }
                         KeyCode::Tab => {
                             app.run();
-                            if app.show_output {
-                                app.fx_state.trigger_output();
-                            }
+                            app.show_output = true;
+                            app.fx_state.trigger_output();
                         }
                         _ => {}
                     }

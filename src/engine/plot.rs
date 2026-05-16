@@ -1,4 +1,7 @@
-use ratatui::{layout::Rect, widgets::Widget};
+use ratatui::{
+    layout::Rect,
+    widgets::{Block, Borders, Paragraph, Widget},
+};
 use ratatui_plt::prelude::*;
 use rhai::{Array, Dynamic, Engine as RhaiEngine};
 
@@ -15,6 +18,7 @@ pub struct PlotSpec {
 pub enum PlotKind {
     Line,
     Scatter,
+    HeatMap,
 }
 
 impl Widget for &PlotSpec {
@@ -40,6 +44,11 @@ impl Widget for &PlotSpec {
                     .y_axis(Axis::new().label(&self.y_label))
                     .render(area, buf);
             }
+            PlotKind::HeatMap => {
+                Paragraph::new("HeatMap not yet implemented")
+                    .block(Block::default().borders(Borders::ALL))
+                    .render(area, buf);
+            }
         }
     }
 }
@@ -54,6 +63,8 @@ pub fn register_plot(engine: &mut RhaiEngine) {
 
         let plot_kind = match kind.as_str() {
             "scatter" => PlotKind::Scatter,
+            "heatmap" => PlotKind::HeatMap,
+            "line" => PlotKind::Line,
             _ => PlotKind::Line,
         };
 

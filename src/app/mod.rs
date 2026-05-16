@@ -26,17 +26,20 @@ pub struct App {
 
 impl App {
     pub fn new(path: PathBuf) -> anyhow::Result<Self> {
+        if !path.exists() {
+            std::fs::write(&path, "")?;
+        }
         let mut app = Self {
             cells: Vec::new(),
             viewport: Viewport::new(5),
             selected: 0,
-            next_id: 1,
             editing: false,
             last_selected: 0,
             path,
             show_output: false,
             fx_state: FxState::new(),
             engine: Engine::new(),
+            next_id: 1,
         };
         app.load_from_file()?;
         Ok(app)
@@ -143,8 +146,7 @@ impl App {
 
         match self.engine.run_cell(&mut self.cells[self.selected]) {
             Ok(result) => {
-                // result is cell out
-                self.cells[self.selected].output = result
+                self.cells[self.selected].output = result;
             }
             Err(e) => {
                 self.cells[self.selected].output = CellOutput::Error(format!("Error: {e}"));
