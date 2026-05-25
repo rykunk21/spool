@@ -9,9 +9,9 @@ use crate::{
 pub mod cell;
 use cell::{Cell, CellOutput};
 
+use crate::engine::dep::get_defines_and_uses;
 use ratatui_textarea::TextArea;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use rhai::Dynamic;
 
 pub struct App {
     pub cells: Vec<Cell>,
@@ -59,14 +59,16 @@ impl App {
                 current.clear();
             } else if line.starts_with("```") && in_block {
                 in_block = false;
+                let cell_id = self.next_id;
                 let ta = TextArea::new(current.clone());
                 self.cells.push(Cell {
-                    id: self.next_id,
+                    id: cell_id,
                     textarea: ta,
                     vim: Vim::new(Mode::Normal),
                     output: CellOutput::Empty,
                 });
                 self.next_id += 1;
+                self.engine.register_cell(cell_id);
             } else if in_block {
                 current.push(line.to_string());
             }
@@ -125,6 +127,8 @@ impl App {
         if self.selected >= self.viewport.offset + self.viewport.height {
             self.viewport.scroll_down(self.cells.len());
         }
+
+        self.engine.register_cell(self.cells[idx].id);
     }
 
     pub fn delete_cell(&mut self) {
@@ -135,65 +139,20 @@ impl App {
         // clamp viewport if it's now past the end
         let max_offset = self.cells.len().saturating_sub(self.viewport.height);
         self.viewport.offset = self.viewport.offset.min(max_offset);
+        let id = self.cells[self.selected].id;
+        self.engine.deregister_cell(id);
     }
 
     pub fn toggle_focus(&mut self) {
         self.editing = !self.editing;
     }
-    // on App
-    pub fn run_from(&mut self, start: usize) -> Result<(), Box<rhai::EvalAltResult>> {
-        // reset the scope when doing a rerun.
-        self.engine.scope = rhai::Scope::new();
-        let keys = self.compute_keys();
-        for i in start..self.cells.len() {
-            let key = keys[i].clone();
-            if !self.engine.output_map.contains_key(&key) {
-                let script = self.cells[i].textarea.lines().join("\n");
-                match self.engine.run_script(&script) {
-                    Ok((result, printed)) => {
-                        self.engine.output_map.insert(key, result.clone());
-                        self.cells[i].output = self.engine.format_output(result, printed);
-                    }
-                    Err(e) => {
-                        self.cells[i].output = CellOutput::Error(e.to_string());
-                        return Err(e);
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
+
     pub fn run(&mut self) {
-        // find the first dirty cell
-        let keys = self.compute_keys();
-        let start = keys
-            .iter()
-            .enumerate()
-            .find(|(i, key)| !self.engine.output_map.contains_key(*key))
-            .map(|(i, _)| i)
-            .unwrap_or(self.selected);
-
-        if let Err(e) = self.run_from(start) {
-            self.cells[self.selected].output = CellOutput::Error(e.to_string());
-        }
+        let cell_id = self.cells[self.selected].id;
+        self.engine.run(cell_id, &mut self.cells);
     }
 
-    pub fn compute_keys(&self) -> Vec<String> {
-        let mut keys = Vec::new();
-        let mut upstream = String::from("root");
-        for cell in &self.cells {
-            let script = cell.textarea.lines().join("\n");
-            let key = App::cell_key(cell.id, &script, &upstream);
-            upstream = key.clone();
-            keys.push(key);
-        }
-        keys
-    }
-    fn cell_key(cell_id: usize, script: &str, upstream_key: &str) -> String {
-        let mut hasher = DefaultHasher::new();
-        cell_id.hash(&mut hasher);
-        script.hash(&mut hasher);
-        upstream_key.hash(&mut hasher);
-        hasher.finish().to_string()
+    pub fn mark_dirty(&mut self, cell_id: usize) {
+        self.engine.mark_dirty(cell_id);
     }
 }

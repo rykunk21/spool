@@ -9,7 +9,8 @@ anyhow = "1"
 
 ratatui = "0.30"
 ratatui-textarea = "0.9"
-rhai = "1.24.0"
+rhai = {version = "1.24.0", features = ["internals"]}
 polars = { version = "0.53.0", features = ["lazy", "csv"] }
 ratatui-plt = "0.0.2"
 tachyonfx = "0.25.0"
+petgraph = "0.8.3"

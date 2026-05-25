@@ -1,22 +1,14 @@
 ```rust
-let df = read_csv("csv1.csv");
-
-    
-
+let x = 10;
 ```
 
 ```rust
-print("hello");
+let y = x + 5;
+print(y);
 ```
 
 ```rust
-df.select("col_b");
-let a = df.select("col_a");
-print(a);
-```
-
-```rust
-let b = df.select("col_b");
-plot(a, b,"A vs B", "line");
+let z = y * 2;
+print(z);
 ```
 

@@ -80,6 +80,7 @@ fn main() -> anyhow::Result<()> {
                         app.toggle_focus();
                         app.save_to_file()?;
                     } else {
+                        let cell_id = app.cells[app.selected].id;
                         let cell = &mut app.cells[app.selected];
                         match cell.vim.transition(input, &mut cell.textarea) {
                             Transition::Mode(mode) if cell.vim.mode != mode => {
@@ -94,7 +95,12 @@ fn main() -> anyhow::Result<()> {
                                 app.toggle_focus();
                                 app.save_to_file()?;
                             }
-                            Transition::Nop | Transition::Mode(_) => {}
+                            Transition::Nop | Transition::Mode(_) => {
+                                // buffer was modified in insert mode
+                                if app.cells[app.selected].vim.mode == Mode::Insert {
+                                    app.mark_dirty(cell_id);
+                                }
+                            }
                         }
                     }
                 }
